@@ -40,7 +40,7 @@ def run_collector():
     
     # 명세서에 명시된 정확한 URL 적용 (IP 차이 주의)
     COMMON_API_URL = "http://203.255.81.72:10021/sensor/api/map"
-    OPENSRC_API_URL = "http://10.255.81.72:10021/sensor/api/opensrc/"
+    OPENSRC_API_URL = "http://203.255.81.72:10021/sensor/api/opensrc/"
     
     while True:
         try:
