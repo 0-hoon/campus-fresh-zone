@@ -2,7 +2,7 @@ import requests
 import time
 import json
 
-# --- 위험도 판단 엔진 (기존과 동일하므로 생략 없이 사용) ---
+# --- 위험도 판단 엔진 (기존과 동일) ---
 def evaluate_environment(temp, aqi, co2, fresh):
     status_levels, status_messages, solution_messages = [1], [], []
     
@@ -38,7 +38,6 @@ def evaluate_environment(temp, aqi, co2, fresh):
 def run_collector():
     print("[수집기] 공식 명세서 기반 데이터 수집 파이프라인 가동...")
     
-    # 명세서에 명시된 정확한 URL 적용 (IP 차이 주의)
     COMMON_API_URL = "http://203.255.81.72:10021/sensor/api/map"
     OPENSRC_API_URL = "http://203.255.81.72:10021/sensor/api/opensrc/"
     
@@ -52,13 +51,14 @@ def run_collector():
                 res_common = requests.get(COMMON_API_URL, timeout=3)
                 if res_common.status_code == 200:
                     for s in res_common.json():
-                        # 명세서: temperature(int), co2(int)
-                        t_val = float(s.get("temperature")) if s.get("temperature") is not None else None
-                        co2_val = s.get("co2")
+                        # ⚙️ 기계적 변형: 데이터가 있을 때만 소수점 둘째 자리까지 반올림
+                        t_val = round(float(s.get("temperature")), 2) if s.get("temperature") is not None else None
+                        co2_val = round(s.get("co2"), 2) if s.get("co2") is not None else None
                         fresh_val = s.get("fresh", True)
                         
                         lvl, risk, sol = evaluate_environment(t_val, None, co2_val, fresh_val)
                         
+                        # 위도와 경도는 round 처리 없이 원본 정밀도 그대로 유지
                         unified_data_list.append({
                             "sensor": s.get("sensor"),
                             "latitude": s.get("latitude"),
@@ -80,14 +80,15 @@ def run_collector():
                 res_opensrc = requests.get(OPENSRC_API_URL, timeout=3)
                 if res_opensrc.status_code == 200:
                     for s in res_opensrc.json():
-                        # 명세서: temp(double), eco2(int), aqi(int)
-                        t_val = s.get("temp")
-                        h_val = s.get("humidity")
-                        aqi_val = s.get("aqi")
-                        co2_val = s.get("eco2")
+                        # ⚙️ 기계적 변형: 각 수치들을 꺼냄과 동시에 소수점 둘째 자리 제한 연산 적용 (Null 방어 포함)
+                        t_val = round(s.get("temp"), 2) if s.get("temp") is not None else None
+                        h_val = round(s.get("humidity"), 2) if s.get("humidity") is not None else None
+                        aqi_val = round(s.get("aqi"), 2) if s.get("aqi") is not None else None
+                        co2_val = round(s.get("eco2"), 2) if s.get("eco2") is not None else None
                         
                         lvl, risk, sol = evaluate_environment(t_val, aqi_val, co2_val, True)
                         
+                        # 위도와 경도(lat, lon)는 최단 거리 연산을 위해 원본 소수점 그대로 유지
                         unified_data_list.append({
                             "sensor": s.get("sensor"),
                             "latitude": s.get("lat"),
@@ -114,7 +115,6 @@ def run_collector():
         except Exception as e:
             print(f"-> 전체 루프 에러 발생: {e}")
             
-        # 60초 대기 후 다시 수집
         time.sleep(60)
 
 if __name__ == '__main__':
