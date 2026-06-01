@@ -41,6 +41,9 @@ import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 
+import com.example.campusfreshzone.model.SensorData
+import com.example.campusfreshzone.network.SensorRepository
+
 @Composable
 fun MainScreen() {
 
@@ -57,6 +60,13 @@ fun MainScreen() {
         mutableStateOf(
             LatLng(36.6285, 127.4570)
         )
+    }
+    var sensorList by remember {
+        mutableStateOf<List<SensorData>>(emptyList())
+    }
+
+    val repository = remember {
+        SensorRepository()
     }
 
     val cameraPositionState = rememberCameraPositionState {
@@ -166,6 +176,13 @@ fun MainScreen() {
 
     LaunchedEffect(Unit) {
 
+        try {
+            sensorList = repository.getSensors()
+            println("센서 개수: ${sensorList.size}")
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
         when (
             PackageManager.PERMISSION_GRANTED
         ) {
@@ -186,7 +203,6 @@ fun MainScreen() {
             }
         }
     }
-
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -215,7 +231,7 @@ fun MainScreen() {
                 ) {
 
                     Text(
-                        text = "현재 상태",
+                        text = "센서 수 : ${sensorList.size}",
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold
                     )
