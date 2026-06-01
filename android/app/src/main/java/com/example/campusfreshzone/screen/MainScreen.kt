@@ -63,7 +63,13 @@ fun MainScreen() {
     }
     var sensorList by remember {
         mutableStateOf<List<SensorData>>(emptyList())
+
     }
+
+    val selectedSensor =
+        sensorList.firstOrNull {
+            it.humidity != null
+        }
 
     val repository = remember {
         SensorRepository()
@@ -82,32 +88,6 @@ fun MainScreen() {
         )
     }
 
-    val sensor1State = remember {
-        MarkerState(
-            position = LatLng(
-                36.6295,
-                127.4563
-            )
-        )
-    }
-
-    val sensor2State = remember {
-        MarkerState(
-            position = LatLng(
-                36.6288,
-                127.4575
-            )
-        )
-    }
-
-    val sensor3State = remember {
-        MarkerState(
-            position = LatLng(
-                36.6302,
-                127.4552
-            )
-        )
-    }
 
     fun startLocationUpdates() {
 
@@ -222,7 +202,7 @@ fun MainScreen() {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(80.dp)
+                    .height(160.dp)
             ) {
 
                 Box(
@@ -230,11 +210,43 @@ fun MainScreen() {
                     contentAlignment = Alignment.Center
                 ) {
 
-                    Text(
-                        text = "센서 수 : ${sensorList.size}",
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Column(
+                        modifier = Modifier.padding(12.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+
+                        Text(
+                            text = "현재 상태",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            text =
+                                if (selectedSensor != null)
+                                    "온도 : %.1f°C".format(selectedSensor.temp ?: 0.0)
+                                else
+                                    "데이터 로딩중..."
+                        )
+
+                        Text(
+                            text =
+                                if (selectedSensor != null)
+                                    "습도 : %.1f%%".format(selectedSensor.humidity ?: 0.0)
+                                else
+                                    ""
+                        )
+
+                        Text(
+                            text =
+                                if (selectedSensor != null)
+                                    "위험도 : ${selectedSensor.mainRisk}"
+                                else
+                                    ""
+                        )
+                    }
                 }
             }
 
@@ -259,40 +271,35 @@ fun MainScreen() {
                             BitmapDescriptorFactory.HUE_AZURE
                         )
                     )
+                    sensorList.forEach { sensor ->
 
-                    Marker(
-                        state = sensor1State,
-                        title = "센서 1",
-                        snippet = "미세먼지 좋음",
+                        if (
+                            sensor.latitude != null &&
+                            sensor.longitude != null
+                        ) {
 
-                        icon = BitmapDescriptorFactory.defaultMarker(
-                            BitmapDescriptorFactory.HUE_GREEN
-                        )
-                    )
+                            Marker(
+                                state = MarkerState(
+                                    position = LatLng(
+                                        sensor.latitude,
+                                        sensor.longitude
+                                    )
+                                ),
 
-                    Marker(
-                        state = sensor2State,
-                        title = "센서 2",
-                        snippet = "미세먼지 보통",
+                                title = sensor.sensor,
 
-                        icon = BitmapDescriptorFactory.defaultMarker(
-                            BitmapDescriptorFactory.HUE_YELLOW
-                        )
-                    )
-
-                    Marker(
-                        state = sensor3State,
-                        title = "센서 3",
-                        snippet = "미세먼지 나쁨",
-
-                        icon = BitmapDescriptorFactory.defaultMarker(
-                            BitmapDescriptorFactory.HUE_RED
-                        )
-                    )
+                                snippet =
+                                    "온도: ${sensor.temp}°C\n" +
+                                            "위험도: ${sensor.mainRisk}"
+                            )
+                        }
+                    }
                 }
+
+
             }
 
-            Spacer(modifier = Modifier.height(30.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
             Button(
                 onClick = {
@@ -308,37 +315,38 @@ fun MainScreen() {
                     fontSize = 20.sp
                 )
             }
-        }
 
-        if (showDialog) {
+            if (showDialog) {
 
-            AlertDialog(
-                onDismissRequest = {
-                    showDialog = false
-                },
+                AlertDialog(
+                    onDismissRequest = {
+                        showDialog = false
+                    },
 
-                title = {
-                    Text("행동 가이드")
-                },
+                    title = {
+                        Text("행동 가이드")
+                    },
 
-                text = {
-                    Text(
-                        "현재 환경 상태는 안전합니다.\n\nFresh Zone 추천:\n중앙도서관 휴게실"
-                    )
-                },
+                    text = {
+                        Text(
+                            selectedSensor?.solution
+                                ?: "데이터를 불러오는 중입니다."
+                        )
+                    },
 
-                confirmButton = {
+                    confirmButton = {
 
-                    TextButton(
-                        onClick = {
-                            showDialog = false
+                        TextButton(
+                            onClick = {
+                                showDialog = false
+                            }
+                        ) {
+
+                            Text("확인")
                         }
-                    ) {
-
-                        Text("확인")
                     }
-                }
-            )
+                )
+            }
         }
     }
 }
