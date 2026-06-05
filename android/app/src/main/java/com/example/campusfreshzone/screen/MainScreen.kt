@@ -1,10 +1,10 @@
 package com.example.campusfreshzone.screen
-
+import com.google.maps.android.compose.MarkerInfoWindowContent
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.os.Looper
-import com.google.maps.android.compose.MarkerInfoWindowContent
+
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 
@@ -44,6 +44,7 @@ import com.google.maps.android.compose.rememberCameraPositionState
 import com.example.campusfreshzone.model.SensorData
 import com.example.campusfreshzone.network.SensorRepository
 
+@SuppressLint("MissingPermission")
 @Composable
 fun MainScreen() {
 
@@ -71,6 +72,11 @@ fun MainScreen() {
             it.humidity != null
         }
 
+    val bestZone =
+        sensorList.firstOrNull {
+            it.isBestZone
+        }
+
     val repository = remember {
         SensorRepository()
     }
@@ -80,6 +86,10 @@ fun MainScreen() {
             currentLocation,
             15f
         )
+    }
+
+    var firstMove by remember {
+        mutableStateOf(true)
     }
 
     val currentMarkerState = remember {
@@ -119,12 +129,17 @@ fun MainScreen() {
                         currentMarkerState.position =
                             latLng
 
-                        cameraPositionState.move(
-                            CameraUpdateFactory.newLatLngZoom(
-                                latLng,
-                                16f
+                        if (firstMove) {
+
+                            cameraPositionState.move(
+                                CameraUpdateFactory.newLatLngZoom(
+                                    latLng,
+                                    16f
+                                )
                             )
-                        )
+
+                            firstMove = false
+                        }
                     }
                 }
             }
@@ -202,7 +217,7 @@ fun MainScreen() {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(240.dp)
+                    .height(190.dp)
             ) {
 
                 Box(
@@ -278,11 +293,7 @@ fun MainScreen() {
 
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        Text(
-                            text = "Fresh Zone 추천 센서",
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF2E7D32)
-                        )
+
                     }
                 }
             }
@@ -321,8 +332,7 @@ fun MainScreen() {
                                         sensor.latitude,
                                         sensor.longitude
                                     )
-                                ),
-                                title = sensor.sensor
+                                )
                             ) { marker ->
 
                                 Column(
@@ -422,11 +432,7 @@ fun MainScreen() {
                                 modifier = Modifier.height(12.dp)
                             )
 
-                            Text(
-                                text = "(Fresh-Zone)",
-                                color = Color(0xFF2E7D32),
-                                fontWeight = FontWeight.Bold
-                            )
+
                         }
                     },
 

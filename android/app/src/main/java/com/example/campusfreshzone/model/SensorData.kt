@@ -11,5 +11,6 @@ data class SensorData(
     val fresh: Boolean,
     val statusLevel: Int,
     val mainRisk: String,
-    val solution: String
+    val solution: String,
+    val isBestZone: Boolean = false
 )
