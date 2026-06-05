@@ -10,6 +10,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 
@@ -26,6 +27,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -133,10 +136,108 @@ fun MainScreen() {
             }
         else
             "정보 없음"
+    val faceMood =
+        when {
+            selectedSensor == null -> "neutral"
+            !selectedSensor.fresh -> "neutral"
+            selectedSensor.statusLevel >= 3 -> "sad"
+            selectedSensor.statusLevel == 2 -> "neutral"
+            else -> "happy"
+        }
     val shouldShowFreshZone =
         selectedSensor != null &&
             selectedSensor.mainRisk != "NORMAL" &&
             bestZone != null
+
+    @Composable
+    fun StatusFaceIcon(
+        mood: String,
+        color: Color,
+        modifier: Modifier = Modifier
+    ) {
+
+        Canvas(modifier = modifier) {
+            val strokeWidth = size.minDimension * 0.08f
+            val centerX = size.width / 2f
+            val centerY = size.height / 2f
+            val radius = size.minDimension / 2f - strokeWidth
+            val eyeRadius = size.minDimension * 0.055f
+
+            drawCircle(
+                color = color,
+                radius = radius,
+                center = androidx.compose.ui.geometry.Offset(centerX, centerY),
+                style = Stroke(width = strokeWidth)
+            )
+
+            drawCircle(
+                color = color,
+                radius = eyeRadius,
+                center = androidx.compose.ui.geometry.Offset(
+                    size.width * 0.36f,
+                    size.height * 0.4f
+                )
+            )
+            drawCircle(
+                color = color,
+                radius = eyeRadius,
+                center = androidx.compose.ui.geometry.Offset(
+                    size.width * 0.64f,
+                    size.height * 0.4f
+                )
+            )
+
+            val mouthTopLeft = androidx.compose.ui.geometry.Offset(
+                size.width * 0.29f,
+                size.height * 0.48f
+            )
+            val mouthSize = androidx.compose.ui.geometry.Size(
+                size.width * 0.42f,
+                size.height * 0.28f
+            )
+            val startAngle =
+                when (mood) {
+                    "sad" -> 205f
+                    "happy" -> 25f
+                    else -> 0f
+                }
+            val sweepAngle =
+                when (mood) {
+                    "sad" -> 130f
+                    "happy" -> 130f
+                    else -> 0f
+                }
+
+            if (mood == "neutral") {
+                drawLine(
+                    color = color,
+                    start = androidx.compose.ui.geometry.Offset(
+                        size.width * 0.34f,
+                        size.height * 0.66f
+                    ),
+                    end = androidx.compose.ui.geometry.Offset(
+                        size.width * 0.66f,
+                        size.height * 0.66f
+                    ),
+                    strokeWidth = strokeWidth,
+                    cap = StrokeCap.Round
+                )
+            } else {
+                drawArc(
+                    color = color,
+                    startAngle = startAngle,
+                    sweepAngle = sweepAngle,
+                    useCenter = false,
+                    topLeft = mouthTopLeft,
+                    size = mouthSize,
+                    style = Stroke(
+                        width = strokeWidth,
+                        cap = StrokeCap.Round
+                    )
+                )
+            }
+        }
+    }
 
     @Composable
     fun MetricBox(
@@ -338,16 +439,30 @@ fun MainScreen() {
                                     shape = RoundedCornerShape(50)
                                 )
                                 .padding(
-                                    horizontal = 14.dp,
-                                    vertical = 6.dp
+                                    horizontal = 18.dp,
+                                    vertical = 10.dp
                                 )
                         ) {
 
-                            Text(
-                                text = riskText,
-                                color = Color.White,
-                                fontWeight = FontWeight.Bold
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+
+                                StatusFaceIcon(
+                                    mood = faceMood,
+                                    color = Color.White,
+                                    modifier = Modifier.size(52.dp)
+                                )
+
+                                Spacer(modifier = Modifier.width(12.dp))
+
+                                Text(
+                                    text = riskText,
+                                    color = Color.White,
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
 
                         Spacer(modifier = Modifier.height(10.dp))
@@ -375,7 +490,7 @@ fun MainScreen() {
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(10.dp))
+                        Spacer(modifier = Modifier.height(24.dp))
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -419,7 +534,7 @@ fun MainScreen() {
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(10.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
 
                         if (shouldShowFreshZone) {
 
