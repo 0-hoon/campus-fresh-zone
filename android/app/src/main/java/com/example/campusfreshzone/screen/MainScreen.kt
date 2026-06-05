@@ -51,6 +51,307 @@ import com.google.maps.android.compose.rememberCameraPositionState
 import com.example.campusfreshzone.model.SensorData
 import com.example.campusfreshzone.network.SensorRepository
 
+private val FreshZoneGreen = Color(0xFF2E7D32)
+
+private fun statusColorFor(sensor: SensorData?): Color =
+    when {
+        sensor == null -> Color(0xFF757575)
+        !sensor.fresh -> Color(0xFF757575)
+        sensor.statusLevel >= 3 -> Color(0xFFC62828)
+        sensor.statusLevel == 2 -> Color(0xFFF57C00)
+        else -> FreshZoneGreen
+    }
+
+private fun statusBackgroundFor(sensor: SensorData?): Color =
+    when {
+        sensor == null -> Color(0xFFF1F3F4)
+        !sensor.fresh -> Color(0xFFF1F3F4)
+        sensor.statusLevel >= 3 -> Color(0xFFFFEBEE)
+        sensor.statusLevel == 2 -> Color(0xFFFFF3E0)
+        else -> Color(0xFFE8F5E9)
+    }
+
+private fun riskTextFor(sensor: SensorData?): String =
+    when {
+        sensor == null -> "정보 없음"
+        !sensor.fresh -> "데이터 지연"
+        sensor.statusLevel >= 3 -> "위험"
+        sensor.statusLevel == 2 -> "주의"
+        else -> "정상"
+    }
+
+private fun faceMoodFor(sensor: SensorData?): String =
+    when {
+        sensor == null -> "neutral"
+        !sensor.fresh -> "neutral"
+        sensor.statusLevel >= 3 -> "sad"
+        sensor.statusLevel == 2 -> "neutral"
+        else -> "happy"
+    }
+
+@Composable
+private fun StatusFaceIcon(
+    mood: String,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+
+    Canvas(modifier = modifier) {
+        val strokeWidth = size.minDimension * 0.08f
+        val centerX = size.width / 2f
+        val centerY = size.height / 2f
+        val radius = size.minDimension / 2f - strokeWidth
+        val eyeRadius = size.minDimension * 0.055f
+
+        drawCircle(
+            color = color,
+            radius = radius,
+            center = androidx.compose.ui.geometry.Offset(centerX, centerY),
+            style = Stroke(width = strokeWidth)
+        )
+
+        drawCircle(
+            color = color,
+            radius = eyeRadius,
+            center = androidx.compose.ui.geometry.Offset(
+                size.width * 0.36f,
+                size.height * 0.4f
+            )
+        )
+        drawCircle(
+            color = color,
+            radius = eyeRadius,
+            center = androidx.compose.ui.geometry.Offset(
+                size.width * 0.64f,
+                size.height * 0.4f
+            )
+        )
+
+        val mouthTopLeft = androidx.compose.ui.geometry.Offset(
+            size.width * 0.29f,
+            size.height * 0.48f
+        )
+        val mouthSize = androidx.compose.ui.geometry.Size(
+            size.width * 0.42f,
+            size.height * 0.28f
+        )
+        val startAngle =
+            when (mood) {
+                "sad" -> 205f
+                "happy" -> 25f
+                else -> 0f
+            }
+        val sweepAngle =
+            when (mood) {
+                "sad" -> 130f
+                "happy" -> 130f
+                else -> 0f
+            }
+
+        if (mood == "neutral") {
+            drawLine(
+                color = color,
+                start = androidx.compose.ui.geometry.Offset(
+                    size.width * 0.34f,
+                    size.height * 0.66f
+                ),
+                end = androidx.compose.ui.geometry.Offset(
+                    size.width * 0.66f,
+                    size.height * 0.66f
+                ),
+                strokeWidth = strokeWidth,
+                cap = StrokeCap.Round
+            )
+        } else {
+            drawArc(
+                color = color,
+                startAngle = startAngle,
+                sweepAngle = sweepAngle,
+                useCenter = false,
+                topLeft = mouthTopLeft,
+                size = mouthSize,
+                style = Stroke(
+                    width = strokeWidth,
+                    cap = StrokeCap.Round
+                )
+            )
+        }
+    }
+}
+
+@Composable
+private fun MetricBox(
+    icon: String,
+    label: String,
+    value: String,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+
+    Column(
+        modifier = modifier
+            .background(
+                color = Color.White,
+                shape = RoundedCornerShape(12.dp)
+            )
+            .padding(
+                horizontal = 8.dp,
+                vertical = 8.dp
+            ),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+
+        Text(
+            text = icon,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            color = color
+        )
+
+        Spacer(modifier = Modifier.height(2.dp))
+
+        Text(
+            text = label,
+            fontSize = 11.sp,
+            color = Color(0xFF6B7280)
+        )
+
+        Spacer(modifier = Modifier.height(2.dp))
+
+        Text(
+            text = value,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF111827)
+        )
+    }
+}
+
+@Composable
+private fun ActionGuideContent(
+    selectedSensor: SensorData?,
+    bestZone: SensorData?,
+    modifier: Modifier = Modifier
+) {
+    val statusColor = statusColorFor(selectedSensor)
+    val statusBackground = statusBackgroundFor(selectedSensor)
+    val riskText = riskTextFor(selectedSensor)
+    val faceMood = faceMoodFor(selectedSensor)
+    val shouldShowFreshZone =
+        selectedSensor != null &&
+            selectedSensor.mainRisk != "NORMAL" &&
+            bestZone != null
+
+    Column(
+        modifier = modifier.fillMaxWidth()
+    ) {
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    color = statusBackground,
+                    shape = RoundedCornerShape(14.dp)
+                )
+                .padding(14.dp)
+        ) {
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+
+                StatusFaceIcon(
+                    mood = faceMood,
+                    color = statusColor,
+                    modifier = Modifier.size(42.dp)
+                )
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column {
+
+                    Text(
+                        text = riskText,
+                        color = statusColor,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Spacer(modifier = Modifier.height(2.dp))
+
+                    Text(
+                        text =
+                            if (selectedSensor != null)
+                                "기준 센서 : ${selectedSensor.sensor}"
+                            else
+                                "기준 센서 : 정보 없음",
+                        color = Color(0xFF374151),
+                        fontSize = 13.sp
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        Text(
+            text = "권장 행동",
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF111827)
+        )
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    color = Color(0xFFF9FAFB),
+                    shape = RoundedCornerShape(12.dp)
+                )
+                .padding(14.dp)
+        ) {
+
+            Text(
+                text =
+                    selectedSensor?.solution
+                        ?: "데이터를 불러오는 중입니다.",
+                color = Color(0xFF374151)
+            )
+        }
+
+        if (shouldShowFreshZone) {
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            Text(
+                text = "추천 Fresh Zone",
+                fontWeight = FontWeight.Bold,
+                color = FreshZoneGreen
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        color = Color(0xFFE8F5E9),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    .padding(14.dp)
+            ) {
+
+                Text(
+                    text = bestZone?.sensor ?: "정보 없음",
+                    color = FreshZoneGreen,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
 @SuppressLint("MissingPermission")
 @Composable
 fun MainScreen() {
@@ -126,16 +427,7 @@ fun MainScreen() {
         targetValue = statusColor,
         label = "statusColor"
     )
-    val riskText =
-        if (selectedSensor != null)
-            when (selectedSensor.mainRisk) {
-                "NORMAL" -> "정상"
-                "WARNING" -> "주의"
-                "DANGER" -> "위험"
-                else -> "데이터 지연"
-            }
-        else
-            "정보 없음"
+    val riskText = riskTextFor(selectedSensor)
     val faceMood =
         when {
             selectedSensor == null -> "neutral"
@@ -714,49 +1006,10 @@ fun MainScreen() {
 
                     text = {
 
-                        Column {
-
-                            Text(
-                                text =
-                                    if (selectedSensor != null)
-                                        "기준 센서 : ${selectedSensor.sensor}"
-                                    else
-                                        "기준 센서 : 정보 없음",
-
-                                fontWeight = FontWeight.Bold
-                            )
-
-                            Spacer(
-                                modifier = Modifier.height(12.dp)
-                            )
-
-                            Text(
-                                text =
-                                    selectedSensor?.solution
-                                        ?: "데이터를 불러오는 중입니다."
-                            )
-
-                            if (
-                                shouldShowFreshZone
-                            ) {
-
-                                Spacer(
-                                    modifier = Modifier.height(12.dp)
-                                )
-
-                                Text(
-                                    text = "추천 Fresh Zone: ${bestZone.sensor}",
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF2E7D32)
-                                )
-                            }
-
-                            Spacer(
-                                modifier = Modifier.height(12.dp)
-                            )
-
-
-                        }
+                        ActionGuideContent(
+                            selectedSensor = selectedSensor,
+                            bestZone = bestZone
+                        )
                     },
 
                     confirmButton = {
@@ -767,7 +1020,7 @@ fun MainScreen() {
                             }
                         ) {
 
-                            Text("확인")
+                            Text("닫기")
                         }
                     }
                 )
