@@ -4,7 +4,7 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.os.Looper
-
+import com.google.maps.android.compose.MarkerInfoWindowContent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 
@@ -202,7 +202,7 @@ fun MainScreen() {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(160.dp)
+                    .height(240.dp)
             ) {
 
                 Box(
@@ -226,25 +226,62 @@ fun MainScreen() {
                         Text(
                             text =
                                 if (selectedSensor != null)
-                                    "온도 : %.1f°C".format(selectedSensor.temp ?: 0.0)
+                                    "기준 센서 : ${selectedSensor.sensor}"
                                 else
-                                    "데이터 로딩중..."
+                                    "기준 센서 : 정보 없음"
                         )
+
+                        Spacer(modifier = Modifier.height(4.dp))
 
                         Text(
                             text =
                                 if (selectedSensor != null)
-                                    "습도 : %.1f%%".format(selectedSensor.humidity ?: 0.0)
+                                    "온도 : ${
+                                        selectedSensor.temp?.let {
+                                            "%.1f℃".format(it)
+                                        } ?: "-"
+                                    }"
                                 else
-                                    ""
+                                    "온도 : -"
                         )
+
+                        Spacer(modifier = Modifier.height(4.dp))
 
                         Text(
                             text =
                                 if (selectedSensor != null)
-                                    "위험도 : ${selectedSensor.mainRisk}"
+                                    "습도 : ${
+                                        selectedSensor.humidity?.let {
+                                            "%.1f%%".format(it)
+                                        } ?: "-"
+                                    }"
                                 else
-                                    ""
+                                    "습도 : -"
+                        )
+
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        Text(
+                            text =
+                                if (selectedSensor != null)
+                                    "위험도 : ${
+                                        when (selectedSensor.mainRisk) {
+                                            "NORMAL" -> "정상"
+                                            "WARNING" -> "주의"
+                                            "DANGER" -> "위험"
+                                            else -> "데이터 지연"
+                                        }
+                                    }"
+                                else
+                                    "위험도 : 정보 없음"
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            text = "Fresh Zone 추천 센서",
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF2E7D32)
                         )
                     }
                 }
@@ -278,20 +315,50 @@ fun MainScreen() {
                             sensor.longitude != null
                         ) {
 
-                            Marker(
+                            MarkerInfoWindowContent(
                                 state = MarkerState(
                                     position = LatLng(
                                         sensor.latitude,
                                         sensor.longitude
                                     )
                                 ),
+                                title = sensor.sensor
+                            ) { marker ->
 
-                                title = sensor.sensor,
+                                Column(
+                                    modifier = Modifier.padding(8.dp)
+                                ) {
 
-                                snippet =
-                                    "온도: ${sensor.temp}°C\n" +
-                                            "위험도: ${sensor.mainRisk}"
-                            )
+                                    Text(
+                                        text = sensor.sensor,
+                                        fontWeight = FontWeight.Bold
+                                    )
+
+                                    Text(
+                                        text = "온도: ${
+                                            sensor.temp?.let {
+                                                "%.1f".format(it)
+                                            } ?: "-"
+                                        }℃"
+                                    )
+
+                                    Text(
+                                        text = "습도: ${
+                                            sensor.humidity?.let {
+                                                "%.1f".format(it)
+                                            } ?: "-"
+                                        }%"
+                                    )
+
+                                    Text(
+                                        text = "위험도: ${
+                                            sensor.mainRisk.ifBlank {
+                                                "데이터 지연"
+                                            }
+                                        }"
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -328,10 +395,39 @@ fun MainScreen() {
                     },
 
                     text = {
-                        Text(
-                            selectedSensor?.solution
-                                ?: "데이터를 불러오는 중입니다."
-                        )
+
+                        Column {
+
+                            Text(
+                                text =
+                                    if (selectedSensor != null)
+                                        "기준 센서 : ${selectedSensor.sensor}"
+                                    else
+                                        "기준 센서 : 정보 없음",
+
+                                fontWeight = FontWeight.Bold
+                            )
+
+                            Spacer(
+                                modifier = Modifier.height(12.dp)
+                            )
+
+                            Text(
+                                text =
+                                    selectedSensor?.solution
+                                        ?: "데이터를 불러오는 중입니다."
+                            )
+
+                            Spacer(
+                                modifier = Modifier.height(12.dp)
+                            )
+
+                            Text(
+                                text = "(Fresh-Zone)",
+                                color = Color(0xFF2E7D32),
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     },
 
                     confirmButton = {
