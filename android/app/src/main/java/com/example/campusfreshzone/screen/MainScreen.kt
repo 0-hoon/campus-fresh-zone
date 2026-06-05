@@ -332,8 +332,17 @@ fun MainScreen() {
                                         sensor.latitude,
                                         sensor.longitude
                                     )
+                                ),
+
+                                icon = BitmapDescriptorFactory.defaultMarker(
+                                    if (sensor.isBestZone)
+                                        BitmapDescriptorFactory.HUE_GREEN
+                                    else
+                                        BitmapDescriptorFactory.HUE_RED
                                 )
-                            ) { marker ->
+                            )
+
+                            { marker ->
 
                                 Column(
                                     modifier = Modifier.padding(8.dp)
@@ -427,6 +436,23 @@ fun MainScreen() {
                                     selectedSensor?.solution
                                         ?: "데이터를 불러오는 중입니다."
                             )
+
+                            if (
+                                selectedSensor != null &&
+                                selectedSensor.mainRisk != "NORMAL" &&
+                                bestZone != null
+                            ) {
+
+                                Spacer(
+                                    modifier = Modifier.height(12.dp)
+                                )
+
+                                Text(
+                                    text = "추천 Fresh Zone: ${bestZone.sensor}",
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF2E7D32)
+                                )
+                            }
 
                             Spacer(
                                 modifier = Modifier.height(12.dp)
