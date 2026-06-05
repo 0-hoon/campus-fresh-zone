@@ -3,6 +3,7 @@ import com.google.maps.android.compose.MarkerInfoWindowContent
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.pm.PackageManager
+import android.location.Location
 import android.os.Looper
 
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -88,6 +89,25 @@ private fun faceMoodFor(sensor: SensorData?): String =
         sensor.statusLevel == 2 -> "neutral"
         else -> "happy"
     }
+
+private fun distanceMetersFrom(
+    location: LatLng,
+    sensor: SensorData
+): Float? {
+    val latitude = sensor.latitude ?: return null
+    val longitude = sensor.longitude ?: return null
+    val results = FloatArray(1)
+
+    Location.distanceBetween(
+        location.latitude,
+        location.longitude,
+        latitude,
+        longitude,
+        results
+    )
+
+    return results[0]
+}
 
 @Composable
 private fun StatusFaceIcon(
@@ -376,9 +396,19 @@ fun MainScreen() {
     }
 
     val selectedSensor =
-        sensorList.firstOrNull {
-            it.humidity != null
-        }
+        sensorList
+            .mapNotNull { sensor ->
+                distanceMetersFrom(
+                    currentLocation,
+                    sensor
+                )?.let { distance ->
+                    sensor to distance
+                }
+            }
+            .minByOrNull { (_, distance) ->
+                distance
+            }
+            ?.first
 
     val bestZone =
         sensorList.firstOrNull {
