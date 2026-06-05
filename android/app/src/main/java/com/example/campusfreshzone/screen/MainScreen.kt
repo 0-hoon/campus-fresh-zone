@@ -8,12 +8,16 @@ import android.os.Looper
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 
@@ -96,6 +100,90 @@ fun MainScreen() {
         MarkerState(
             position = currentLocation
         )
+    }
+
+    val freshZoneColor = Color(0xFF2E7D32)
+    val statusColor =
+        when {
+            selectedSensor == null -> Color(0xFF757575)
+            !selectedSensor.fresh -> Color(0xFF757575)
+            selectedSensor.statusLevel >= 3 -> Color(0xFFC62828)
+            selectedSensor.statusLevel == 2 -> Color(0xFFF57C00)
+            else -> freshZoneColor
+        }
+    val statusBackground =
+        when {
+            selectedSensor == null -> Color(0xFFF1F3F4)
+            !selectedSensor.fresh -> Color(0xFFF1F3F4)
+            selectedSensor.statusLevel >= 3 -> Color(0xFFFFEBEE)
+            selectedSensor.statusLevel == 2 -> Color(0xFFFFF3E0)
+            else -> Color(0xFFE8F5E9)
+        }
+    val animatedStatusColor by animateColorAsState(
+        targetValue = statusColor,
+        label = "statusColor"
+    )
+    val riskText =
+        if (selectedSensor != null)
+            when (selectedSensor.mainRisk) {
+                "NORMAL" -> "정상"
+                "WARNING" -> "주의"
+                "DANGER" -> "위험"
+                else -> "데이터 지연"
+            }
+        else
+            "정보 없음"
+    val shouldShowFreshZone =
+        selectedSensor != null &&
+            selectedSensor.mainRisk != "NORMAL" &&
+            bestZone != null
+
+    @Composable
+    fun MetricBox(
+        icon: String,
+        label: String,
+        value: String,
+        color: Color,
+        modifier: Modifier = Modifier
+    ) {
+
+        Column(
+            modifier = modifier
+                .background(
+                    color = Color.White,
+                    shape = RoundedCornerShape(12.dp)
+                )
+                .padding(
+                    horizontal = 8.dp,
+                    vertical = 8.dp
+                ),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+
+            Text(
+                text = icon,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = color
+            )
+
+            Spacer(modifier = Modifier.height(2.dp))
+
+            Text(
+                text = label,
+                fontSize = 11.sp,
+                color = Color(0xFF6B7280)
+            )
+
+            Spacer(modifier = Modifier.height(2.dp))
+
+            Text(
+                text = value,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF111827)
+            )
+        }
     }
 
 
@@ -201,7 +289,7 @@ fun MainScreen() {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF5F5F5))
+            .background(Color(0xFFF4F7F5))
     ) {
 
         Column(
@@ -217,7 +305,11 @@ fun MainScreen() {
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(190.dp)
+                    .height(330.dp),
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = statusBackground
+                )
             ) {
 
                 Box(
@@ -233,77 +325,156 @@ fun MainScreen() {
                         Text(
                             text = "현재 상태",
                             fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            color = animatedStatusColor
                         )
 
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        Text(
-                            text =
-                                if (selectedSensor != null)
-                                    "기준 센서 : ${selectedSensor.sensor}"
-                                else
-                                    "기준 센서 : 정보 없음"
-                        )
+                        Box(
+                            modifier = Modifier
+                                .background(
+                                    color = animatedStatusColor,
+                                    shape = RoundedCornerShape(50)
+                                )
+                                .padding(
+                                    horizontal = 14.dp,
+                                    vertical = 6.dp
+                                )
+                        ) {
 
-                        Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = riskText,
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
 
-                        Text(
-                            text =
-                                if (selectedSensor != null)
-                                    "온도 : ${
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Box(
+                            modifier = Modifier
+                                .background(
+                                    color = Color.White,
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                                .padding(
+                                    horizontal = 14.dp,
+                                    vertical = 8.dp
+                                )
+                        ) {
+
+                            Text(
+                                text =
+                                    if (selectedSensor != null)
+                                        "기준 센서 : ${selectedSensor.sensor}"
+                                    else
+                                        "기준 센서 : 정보 없음",
+                                color = Color(0xFF374151),
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+
+                            MetricBox(
+                                icon = "℃",
+                                label = "온도",
+                                value =
+                                    if (selectedSensor != null)
                                         selectedSensor.temp?.let {
-                                            "%.1f℃".format(it)
+                                            "%.1f".format(it)
                                         } ?: "-"
-                                    }"
-                                else
-                                    "온도 : -"
-                        )
+                                    else
+                                        "-",
+                                color = Color(0xFFE65100),
+                                modifier = Modifier.weight(1f)
+                            )
 
-                        Spacer(modifier = Modifier.height(4.dp))
-
-                        Text(
-                            text =
-                                if (selectedSensor != null)
-                                    "습도 : ${
+                            MetricBox(
+                                icon = "💧",
+                                label = "습도",
+                                value =
+                                    if (selectedSensor != null)
                                         selectedSensor.humidity?.let {
-                                            "%.1f%%".format(it)
+                                            "%.1f".format(it)
                                         } ?: "-"
-                                    }"
-                                else
-                                    "습도 : -"
-                        )
+                                    else
+                                        "-",
+                                color = Color(0xFF1976D2),
+                                modifier = Modifier.weight(1f)
+                            )
 
-                        Spacer(modifier = Modifier.height(4.dp))
+                            MetricBox(
+                                icon = "!",
+                                label = "위험도",
+                                value = riskText,
+                                color = Color(0xFFC62828),
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
 
-                        Text(
-                            text =
-                                if (selectedSensor != null)
-                                    "위험도 : ${
-                                        when (selectedSensor.mainRisk) {
-                                            "NORMAL" -> "정상"
-                                            "WARNING" -> "주의"
-                                            "DANGER" -> "위험"
-                                            else -> "데이터 지연"
-                                        }
-                                    }"
-                                else
-                                    "위험도 : 정보 없음"
-                        )
+                        Spacer(modifier = Modifier.height(10.dp))
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                        if (shouldShowFreshZone) {
+
+                            Box(
+                                modifier = Modifier
+                                    .background(
+                                        color = Color.White,
+                                        shape = RoundedCornerShape(12.dp)
+                                    )
+                                    .padding(
+                                        horizontal = 14.dp,
+                                        vertical = 8.dp
+                                    )
+                            ) {
+
+                                Text(
+                                    text = "추천 Fresh Zone : ${bestZone.sensor}",
+                                    color = freshZoneColor,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
 
 
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(30.dp))
+            Spacer(modifier = Modifier.height(14.dp))
+
+            Button(
+                onClick = {
+                    showDialog = true
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(54.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = animatedStatusColor
+                )
+            ) {
+
+                Text(
+                    text = "행동 가이드",
+                    fontSize = 18.sp
+                )
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
 
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(450.dp)
+                    .height(280.dp)
             ) {
 
                 GoogleMap(
@@ -382,24 +553,37 @@ fun MainScreen() {
                     }
                 }
 
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(12.dp)
+                        .background(
+                            color = Color.White,
+                            shape = RoundedCornerShape(14.dp)
+                        )
+                        .padding(
+                            horizontal = 14.dp,
+                            vertical = 8.dp
+                        ),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
 
-            }
+                    Text(
+                        text = "● 추천",
+                        color = freshZoneColor,
+                        fontWeight = FontWeight.Bold
+                    )
 
-            Spacer(modifier = Modifier.height(20.dp))
+                    Spacer(modifier = Modifier.width(12.dp))
 
-            Button(
-                onClick = {
-                    showDialog = true
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(60.dp)
-            ) {
+                    Text(
+                        text = "● 일반 센서",
+                        color = Color(0xFFC62828),
+                        fontWeight = FontWeight.Bold
+                    )
+                }
 
-                Text(
-                    text = "행동 가이드",
-                    fontSize = 20.sp
-                )
+
             }
 
             if (showDialog) {
@@ -438,9 +622,7 @@ fun MainScreen() {
                             )
 
                             if (
-                                selectedSensor != null &&
-                                selectedSensor.mainRisk != "NORMAL" &&
-                                bestZone != null
+                                shouldShowFreshZone
                             ) {
 
                                 Spacer(
