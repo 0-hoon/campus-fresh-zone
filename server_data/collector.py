@@ -34,9 +34,9 @@ def evaluate_environment(temp, aqi, co2, fresh):
         return final_level, " 및 ".join(status_messages), f"현재 {' 및 '.join(status_messages)} 상태입니다. {', '.join(solution_messages)}를 권장합니다."
 
 
-# ⭐️ --- 신규 추가: 원본 포맷을 유지하며 1등 구역에 라벨링하는 함수 ---
+# 신규 추가: 1등 구역에 라벨링하는 함수 ---
 def mark_best_zone(sensor_list):
-    IDEAL_TEMP = 18.0
+    IDEAL_TEMP = 24.0
     
     # 1. 일단 모든 센서의 isBestZone 라벨을 False로 초기화합니다.
     for sensor in sensor_list:
@@ -51,7 +51,7 @@ def mark_best_zone(sensor_list):
     if not safe_zones:
         return # 쾌적한 곳이 하나도 없으면 아무것도 안 하고 종료
         
-    # 3. 1순위: CO2 낮은 순 / 2순위: 18도에 가까운 순으로 1등 찾기
+    # 3. 1순위: CO2 낮은 순 / 2순위: 24도에 가까운 순으로 1등 찾기
     def calculate_score(sensor):
         co2_val = sensor.get("co2") if sensor.get("co2") is not None else 9999
         temp_val = sensor.get("temp") if sensor.get("temp") is not None else 9999
