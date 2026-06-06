@@ -130,3 +130,58 @@ python location_server.py
 ```
 
 ```
+
+백엔드 전체 구조 (모듈별 역할)
+
+collector.py (데이터 수집 및 정제 엔진)
+외부 환경 센서망(공용 API 및 오픈소스 센서 API)을 1분 주기로 호출하는 백그라운드 파이프라인입니다. 결측치 방어, 수치 정제, 위험도 연산, 그리고 최우수 쾌적 구역(isBestZone) 판별까지 수행한 뒤 그 결과를 latest_data.json 파일로 저장하여 서버 데이터를 최신 상태로 유지합니다.
+
+server.py (메인 환경 데이터 API 서버)
+collector.py가 갱신해 둔 latest_data.json 파일을 실시간으로 읽어 클라이언트(안드로이드 앱)에 제공하는 8080 포트 서버입니다. 무거운 연산 없이 파일만 읽어 즉시 반환하므로, 대규모 트래픽에도 매우 빠르고 안정적인 읽기 전용(Read-only) 역할을 합니다.
+
+positioning_engine.py (하이브리드 측위 엔진)
+서버 통신 기능 없이 순수 수학적 위치 연산만 전담하는 모듈입니다. 앱에서 넘어온 GPS 좌표(하버사인 공식 적용)와 BLE 비콘 신호 강도(RSSI)를 분석하여 사용자가 캠퍼스 내 어느 구역에 있는지 정확하게 판별합니다.
+
+location_server.py (위치 매핑 API 서버)
+사용자와 직접 통신하며 맞춤형 정보를 제공하는 8081 포트 라우터입니다. 앱으로부터 위치 데이터(GPS/BLE)를 수신하면 positioning_engine.py에 계산을 의뢰해 현재 구역을 찾아냅니다. 이후 server.py에서 해당 구역에 맞는 1:1 맞춤형 데이터만 뽑아 앱으로 반환합니다.
+
+데이터 흐름
+
+데이터 수집 파이프라인 흐름:
+외부 센서 API (원시 데이터) -> collector.py (데이터 정제 및 추천 연산) -> latest_data.json (저장)
+
+전체 환경 데이터 조회 흐름:
+latest_data.json -> server.py -> Android 앱 (캠퍼스 전체 상태 및 1등 명당 UI 렌더링)
+
+사용자 맞춤형 위치 기반 안내 흐름:
+Android 앱 (GPS+BLE 데이터 전송) -> location_server.py (데이터 수신) -> positioning_engine.py (사용자 현재 구역 판별) -> server.py (데이터 연동 및 필터링) -> Android 앱 (최종 맞춤형 환경 가이드 반환)
+
+API 구조
+
+GET /api/sensors (포트: 8080)
+목적: 캠퍼스 전체 환경 센서 데이터 및 명당 추천 결과 일괄 조회
+요청: 파라미터 없음
+반환: 36개 전체 센서의 배열 데이터 (기온, 습도, 미세먼지, CO2 수치, 위험도 레벨, 행동 지침 문자열, isBestZone 추천 라벨 포함)
+
+POST /api/location (포트: 8081)
+목적: 사용자 실시간 위치 기반 최적 센서 구역 매핑 및 맞춤형 환경 정보 안내
+요청: 안드로이드 앱의 현재 GPS 좌표(lat, lon) 및 반경 내 수집된 BLE 비콘 신호 배열(mac, rssi)
+반환: 엔진을 통해 측위 완료된 현재 구역 이름(current_zone) 및 해당 구역에 매핑된 단일 맞춤형 환경 데이터
+
+아키텍처 흐름도 (도식화)
+
+[ 외부 캠퍼스 센서 API망 ]
+↓ (1분 주기 원시 데이터 수집)
+[ collector.py ] (결측치 정제, 위험도 판별, 명당 연산 수행)
+↓ (JSON 파일 덮어쓰기)
+[ latest_data.json ]
+↓ (초고속 Read-Only 데이터 연동)
+[ server.py ] (GET /api/sensors 담당)
+↓ (캠퍼스 전체 데이터 전송)
+[ Android 앱 ] (클라이언트)
+↓ (POST /api/location : GPS + BLE 배열 전송)
+[ location_server.py ] (맞춤형 위치 매핑 API 담당)
+↓ (위치 판별 의뢰 및 결과 수신)
+[ positioning_engine.py ] (하버사인 공식 + RSSI 하이브리드 연산)
+
+참고: location_server.py는 positioning_engine.py에서 판별된 위치를 바탕으로 server.py의 데이터를 가져와 Android 앱에 최종 결과를 반환하는 구조입니다.
